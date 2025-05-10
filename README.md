@@ -51,8 +51,18 @@ python3 inference_llasa_open.py
 ```
 
 ## Training
+Quick start or to view detailed fine-tuning instructions
 
-Coming soon...
+```bash
+cd training/finetune/offline_finetune
+conda activate llasa+
+# start fine_tuning
+bash train_rms_mtp2_notcat.sh
+
+For more information on fine-tuning, see:
+[Fine-tuning Instructions](training/finetune/offline_finetune/README.md)
+
+```
 
 ## Data
 
