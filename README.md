@@ -14,7 +14,7 @@ With an additional 10% parameters, LLaSA+ achieves 1.5X faster without performan
 
 ## TODOs
 - [x] Release Inference code.
-- [ ] Release Training code.
+- [x] Release Training code.
 - [ ] Release paper to Arxiv.
 - [ ] Support local deployment.
 - [ ] Support Streaming Inference.

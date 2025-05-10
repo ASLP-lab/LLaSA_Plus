@@ -1,0 +1,49 @@
+[![arXiv](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2502.04128)
+
+**Update (2025-02-13):** Add Llasa finetune instruction.
+You can try the finetuning results here:
+- [LLaSA 1B Multi-Speakers (Genshin-zh-en-ja-ko)](https://huggingface.co/spaces/HKUST-Audio/Llasa-1B-multi-speakers-genshin-zh-en-ja-ko)
+- [LLaSA 1B Finetuned for Two Speakers](https://huggingface.co/spaces/HKUST-Audio/Llasa-1B-finetuned-for-two-speakers)
+
+
+**Update (2025-02-07):** Our paper has been released! Llasa 1b Multilingual version released!
+
+## Training
+```bash
+torchrun --nproc_per_node=8 train_tts.py config.json 
+```
+
+or 
+
+```bash
+sbatch run_slurm.sh
+```
+
+## Data
+
+You can download tokenized open-source speech data [here](https://huggingface.co/datasets/HKUST-Audio/Llasa_opensource_speech_data_160k_hours_tokenized/tree/main). This includes LibriHeavy, Emilia (in both Chinese and English), and WenetSpeech4TTS, totaling approximately 160,000 hours of open-source data.
+
+Our models are trained on 250,000 hours of speech data. Of this, 160,000 hours come from the open-source datasets mentioned above, while the remaining 90,000 hours are from internal datasets, which are not yet available for open-source release.
+
+## Data instruction 
+ 
+
+[Text_sequence](https://github.com/zhenye234/LLaSA_training/blob/5ffcddee243f0aa594ebfc089f4327a24f7cac6f/train_tts.py#L111) is encoded by the  text tokenizer from Llama, for example, [Llama-3.2-1B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct) 
+
+[Speech_sequence](https://github.com/zhenye234/LLaSA_training/blob/5ffcddee243f0aa594ebfc089f4327a24f7cac6f/train_tts.py#L112) is extrated through [X-codec2](https://github.com/zhenye234/X-Codec-2.0)  We change the value of speech tokens by adding  len(text tokenizer) +8 [special tokens](https://github.com/zhenye234/LLaSA_training/blob/1d65cf3e34c0d5b508404d67ff41b3b6fb1ecab7/train_tts.py#L67) thereby forming a unified tokenizer that encompasses both speech and text.
+
+ 
+
+## Directly used on Hugging Face
+
+**Codec**: [xcodec2](https://huggingface.co/HKUST-Audio/xcodec2) (Please install new version xcodec2==0.1.3)
+ 
+
+
+**Llasa 1b version**: [Llasa-1B](https://huggingface.co/HKUSTAudio/Llasa-1B)
+
+**Llasa 1b Multilingual version**: [Llasa-1B-Multilingual](https://huggingface.co/HKUSTAudio/Llasa-1B-Multilingual) (Not mentioned in the paper)
+
+**Llasa 3b version**: [Llasa-3B](https://huggingface.co/HKUSTAudio/Llasa-3B)
+
+**Llasa 8b version**: [Llasa-8B](https://huggingface.co/HKUSTAudio/Llasa-8B)  
