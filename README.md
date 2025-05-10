@@ -58,9 +58,9 @@ cd training/finetune/offline_finetune
 conda activate llasa+
 # start fine_tuning
 bash train_rms_mtp2_notcat.sh
-
+# <a href="examples/README.md">here</a>
 For more information on fine-tuning, see:
-[Fine-tuning Instructions](training/finetune/offline_finetune/README.md)
+[Fine-tuning Instructions](./training/finetune/offline_finetune/README.md)
 
 ```
 
