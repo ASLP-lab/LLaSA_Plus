@@ -1,5 +1,5 @@
 <!-- # LLaSA_Plus
-
+# <a href="examples/README.md">here</a>
 [![arXiv](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2502.04128) -->
 
 <p align="center">
@@ -58,7 +58,7 @@ cd training/finetune/offline_finetune
 conda activate llasa+
 # start fine_tuning
 bash train_rms_mtp2_notcat.sh
-# <a href="examples/README.md">here</a>
+
 For more information on fine-tuning, see:
 [Fine-tuning Instructions](./training/finetune/offline_finetune/README.md)
 
