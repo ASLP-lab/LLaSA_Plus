@@ -5,14 +5,27 @@ import os, sys
 import transformers
 from tqdm import tqdm
 import json
-# llasa_1b ='HKUSTAudio/Llasa-1B'
-llasa_1b_my = "/home/work_nfs9/wjtian/llasa_opensource/model.safetensors"
-device = "cuda"
-output_dir = f'./output'
 import librosa
-os.makedirs(output_dir, exist_ok=True)
 import torch.nn.functional as F
 import torch.nn as nn
+import sys
+from tqdm import tqdm
+import torch
+from safetensors.torch import load_file
+
+from xcodec2.modeling_xcodec2 import XCodec2Model
+
+
+# llasa_1b ='HKUSTAudio/Llasa-1B'
+llasa_1b_local = "./model.safetensors"
+llasa_pretrained = "HKUSTAudio/Llasa-1B"
+codec_model_path = "HKUSTAudio/xcodec2"  
+
+device = "cuda"
+output_dir = f'./output'
+topk = int(50)
+os.makedirs(output_dir, exist_ok=True)
+
 class CustomModel(nn.Module):
     def __init__(self, model_name_or_path, config, cache_dir=None):
         super(CustomModel, self).__init__()
@@ -39,8 +52,10 @@ class CustomModel(nn.Module):
         self.hidden_size = self.llm.config.hidden_size
         self.config = config
         self.ignore_index = -100
-        # /root/anaconda3/envs/xcodec2/lib/python3.9/site-packages/transformers/models/llama/modeling_llama.py
-        from llama_dir.modeling_llama import LlamaDecoderLayerLlasa, LlamaRMSNorm
+        
+        from transformers.models.llama.modeling_llama import LlamaDecoderLayerLlasa, LlamaRMSNorm
+
+        # from llama_dir.modeling_llama import LlamaDecoderLayerLlasa, LlamaRMSNorm
         self.mtp_1_block = LlamaDecoderLayerLlasa(config=config, layer_idx=17)
         self.mtp_1_proj = nn.Linear(in_features=2048, out_features=2048)
         self.mtp_1_local_RMSNorm = LlamaRMSNorm(hidden_size = 2048)
@@ -61,7 +76,7 @@ class CustomModel(nn.Module):
         return  outputs
     
 
-    def inference_speedup_backbone_and_mtp1mtp2_correct_checkeos_0313_correct(self, 
+    def inference_speedup_backbone_and_mtp1mtp2(self, 
                                     input_ids,
                                     eos_token_id, 
                                     top_k = 50,
@@ -93,7 +108,7 @@ class CustomModel(nn.Module):
                 # 校验上一步的 token1 是否在 mtp1 的 top-50 内
                 if mtp1_next_token_check_todo:
                     if mtp1_next_token_check_todo == eos_token_id:
-                        backbone_topk_tokens = torch.topk(logits[:, -3, :], top_k, dim=-1).indices
+                        backbone_topk_tokens = torch.topk(logits[:, -3, :], eos_topk, dim=-1).indices
 
                     else:
                         backbone_topk_tokens = torch.topk(logits[:, -3, :], top_k, dim=-1).indices
@@ -119,7 +134,7 @@ class CustomModel(nn.Module):
                         if mtp2_next_token_check_todo:
                             
                             if mtp2_next_token_check_todo == eos_token_id:
-                                backbone_topk_tokens = torch.topk(logits[:, -2, :], top_k, dim=-1).indices
+                                backbone_topk_tokens = torch.topk(logits[:, -2, :], eos_topk, dim=-1).indices
 
                             else:
                                 backbone_topk_tokens = torch.topk(logits[:, -2, :], top_k, dim=-1).indices
@@ -147,10 +162,6 @@ class CustomModel(nn.Module):
                 # 如果不校验，则直接拼接 backbone token，hidden 可以继续使用
                 backbone_next_token = self.get_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
                 if backbone_next_token.item() == eos_token_id:
-                    # if index == 0:
-                    #     while(backbone_next_token.item() == eos_token_id):
-                    #         backbone_next_token = self.get_next_token(logits, temperature=temperature, top_k=top_k, top_p=top_p)
-                    # else:
                     break
                 current_input = torch.cat([current_input, backbone_next_token], dim=1)
 
@@ -168,8 +179,7 @@ class CustomModel(nn.Module):
                 mtp_1_logits = self.llm.lm_head(mtp_1_outputs.to(dtype=torch.bfloat16))
                 mtp1_next_token = self.get_next_token(mtp_1_logits, temperature=temperature, top_k=top_k, top_p=top_p)
 
-                # if mtp1_next_token.item() == eos_token_id:
-                #     break
+
                 current_input = torch.cat([current_input, mtp1_next_token], dim=1)
                 mtp1_next_token_check_todo = mtp1_next_token.item()  # to check token
 
@@ -180,8 +190,7 @@ class CustomModel(nn.Module):
                 mtp_2_logits = self.llm.lm_head(mtp_2_outputs.to(dtype=torch.bfloat16))
                 mtp2_next_token = self.get_next_token(mtp_2_logits, temperature=temperature, top_k=top_k, top_p=top_p)
 
-                # if mtp2_next_token.item() == eos_token_id:
-                #     break
+
                 
                 current_input = torch.cat([current_input, mtp2_next_token], dim=1)
                 mtp2_next_token_check_todo = mtp2_next_token.item()  # to check token
@@ -248,52 +257,42 @@ def extract_speech_ids(speech_tokens_str):
             print(f"Unexpected token: {token_str}")
     return speech_ids
 
-tokenizer = AutoTokenizer.from_pretrained("HKUSTAudio/Llasa-1B")
-config = transformers.AutoConfig.from_pretrained("HKUSTAudio/Llasa-1B")
-model = CustomModel(model_name_or_path="HKUSTAudio/Llasa-1B",
+
+print(f' loading pretrained model: {llasa_pretrained}')
+tokenizer = AutoTokenizer.from_pretrained(llasa_pretrained)
+config = transformers.AutoConfig.from_pretrained(llasa_pretrained)
+model = CustomModel(model_name_or_path=llasa_pretrained,
                     config=config,
                     )
 
 
-import torch
-from safetensors.torch import load_file
-state_dict = load_file(llasa_1b_my)
+print(f' loading mtp model: {llasa_1b_local}')
+
+state_dict = load_file(llasa_1b_local)
 model.load_state_dict(state_dict)
 model.eval()  # 设置为评估模式
-print(f' loading {llasa_1b_my}')
+print(f' loading {llasa_1b_local}')
 for name, param in model.llm.named_parameters():
     print(f"Parameter name: {name}")
     print(f"Parameter shape: {param.shape}")
     print(f"Parameter shape: {param}")
     break
-
 model.to('cuda')
-sys.path.append("./xcodec2/")
-from modeling_xcodec import XCodec2Model
-model_path = "ckpts/finetuning.ckpt"  
-Codec_model = XCodec2Model(ckpt_path=model_path, device=device)
+
+
+
+
+
+Codec_model = XCodec2Model.from_pretrained(codec_model_path)
 Codec_model.eval().cuda()   
 
-# input_text = 'Dealing with family secrets is never easy. Yet, sometimes, omission is a form of protection, intending to safeguard some from the harsh truths. One day, I hope you understand the reasons behind my actions. Until then, Anna, please, bear with me.'
-# input_text = '突然，身边一阵笑声。我看着他们，意气风发地挺直了胸膛，甩了甩那稍显肉感的双臂，轻笑道："我身上的肉，是为了掩饰我爆棚的魅力，否则，岂不吓坏了你们呢？"'
-import sys
-# infile=sys.argv[1]
-
-topk = int(50)
-    #TTS start!
-from tqdm import tqdm
-os.makedirs(f"{output_dir}/mtp2-audioprompt-topk{topk}", exist_ok=True)
-
-outputdddd = f"{output_dir}/mtp2-audioprompt-topk{topk}"
             
 with torch.no_grad():
-    speech_end_id = tokenizer.convert_tokens_to_ids('<|SPEECH_GENERATION_END|>')
-            
-    # 按顺序分配变量
+
     filename = "test"
-    prompt_text = "收到好友从远方寄来的生日礼物，那份意外的惊喜与深深的祝福让我心中充满了甜蜜的快乐，笑容如花儿般绽放。"
+    prompt_text = "希望你以后能够做的比我还好呦。"
     prompt_audio = "./asset/zero_shot_prompt.wav"
-    text_to_synthesize = "哈哈哈，你好，我是来自火星的生命，希望你以后能够做的比我还好呦。"
+    text_to_synthesize = "收到好友从远方寄来的生日礼物，那份意外的惊喜与深深的祝福让我心中充满了甜蜜的快乐，笑容如花儿般绽放。"
     ground_truth_audio = "./gt.wav"
     
     if ground_truth_audio:
@@ -304,7 +303,6 @@ with torch.no_grad():
     target_text = text_to_synthesize
     
     prompt_wav, sr = librosa.load(prompt_audio, sr=16000)
-    # prompt_wav, sr = sf.read(item.replace('.normalized.txt', '.wav').strip()) # 16k only
     prompt_wav = torch.from_numpy(prompt_wav).float().unsqueeze(0)  
     prompt_text = prompt_text
     vq_code_prompt = Codec_model.encode_code(input_waveform=prompt_wav)
@@ -320,6 +318,7 @@ with torch.no_grad():
         {"role": "assistant", "content": "<|SPEECH_GENERATION_START|>" + ''.join(speech_ids_prefix)}
     ]
 
+    speech_end_id = tokenizer.convert_tokens_to_ids('<|SPEECH_GENERATION_END|>')
     input_ids = tokenizer.apply_chat_template(
         chat, 
         tokenize=True, 
@@ -327,7 +326,7 @@ with torch.no_grad():
         continue_final_message=True
     )
     input_ids = input_ids.to('cuda')
-    outputs, check_count_success_mtp1, check_count_success_mtp2, total_num = model.inference_speedup_backbone_and_mtp1mtp2_correct_checkeos_0313_correct(
+    outputs, check_count_success_mtp1, check_count_success_mtp2, total_num = model.inference_speedup_backbone_and_mtp1mtp2(
         input_ids,
         eos_token_id= speech_end_id ,
         top_k=topk
@@ -340,5 +339,5 @@ with torch.no_grad():
         gen_wav = Codec_model.decode_code(speech_tokens) 
     except:
         print(f"{idfilename} decode error")
-    sf.write(f"{outputdddd}/{idfilename}.wav", gen_wav[0, 0, 320 * len(speech_ids_prefix):].cpu().numpy(), 16000)
+    sf.write(f"{output_dir}/{idfilename}.wav", gen_wav[0, 0, 320 * len(speech_ids_prefix):].cpu().numpy(), 16000)
                 

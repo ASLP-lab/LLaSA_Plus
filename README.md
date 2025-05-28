@@ -15,10 +15,15 @@ With an additional 10% parameters, LLaSA+ achieves 1.5X faster without performan
 ## TODOs
 - [x] Release Inference code.
 - [x] Release Training code.
+- [x] Release checkpoint trained on LibriTTS.
 - [ ] Release paper to Arxiv.
 - [ ] Support local deployment.
 - [ ] Support Streaming Inference.
 - [ ] Online serving on Hugging Face Space.
+
+## Checkpoint
+
+Llasa+'s checkpoint trained on LibriTTS can be found in:  `https://huggingface.co/ASLP-lab/LLaSA_Plus/tree/main/llasa_plus`
 
 ## Inference
 
@@ -33,13 +38,6 @@ cd LLaSA_Plus
 conda create -n llasa+ python=3.10
 conda activate llasa+
 
-## OR you can use classic Python virtual enviroment instead of conda
-python -m venv venv
-# activate venv on Linux
-source venv/bin/activate
-# activate venv on Windows
-venv\Scripts\activate
-
 ## install requirements
 pip install -r requirements.txt
 ```
@@ -47,6 +45,7 @@ pip install -r requirements.txt
 On Linux you can now infer by:
 ```bash
 # Inference for text2speech
+Replacing the `llama_1b_local` with a Downloaded Checkpoint
 python3 inference_llasa_open.py
 ```
 
@@ -69,5 +68,4 @@ For more information on fine-tuning, see:<a href="./training/finetune/offline_fi
 Our models are fine_tuning on LibriTTS.
 
 You can download original open-source speech data [here](https://www.openslr.org/60/). This includes LibriTTS approximately 585 hours of open-source data.
-
 
