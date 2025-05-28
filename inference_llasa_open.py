@@ -293,10 +293,6 @@ with torch.no_grad():
     prompt_text = "希望你以后能够做的比我还好呦。"
     prompt_audio = "./asset/zero_shot_prompt.wav"
     text_to_synthesize = "收到好友从远方寄来的生日礼物，那份意外的惊喜与深深的祝福让我心中充满了甜蜜的快乐，笑容如花儿般绽放。"
-    ground_truth_audio = "./gt.wav"
-    
-    if ground_truth_audio:
-        print(f"Ground Truth Audio: {ground_truth_audio}")
 
     idfilename = os.path.splitext(os.path.splitext(os.path.basename(filename))[0])[0]
 
