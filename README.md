@@ -16,7 +16,7 @@ With an additional 10% parameters, LLaSA+ achieves 1.5X faster without performan
 - [x] Release Inference code.
 - [x] Release Training code.
 - [x] Release checkpoint trained on LibriTTS.
-- [ ] Release paper to Arxiv.
+- [x] Release paper to Arxiv.
 - [ ] Support local deployment.
 - [ ] Support Streaming Inference.
 - [ ] Online serving on Hugging Face Space.
